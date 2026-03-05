@@ -25,13 +25,6 @@ const char* RemoteStartTransaction::getOperationType() {
 void RemoteStartTransaction::processReq(JsonObject payload) {
     int connectorId = payload["connectorId"] | -1;
 
-    // OCPP 1.6 specification: connectorId SHALL be > 0 (TC_027_CS)
-    if (connectorId == 0) {
-        MO_DBG_INFO("RemoteStartTransaction rejected: connectorId SHALL not be 0");
-        accepted = false;
-        return;
-    }
-
     if (!payload.containsKey("idTag")) {
         errorCode = "FormationViolation";
         return;
@@ -113,7 +106,7 @@ void RemoteStartTransaction::processReq(JsonObject payload) {
             } else {
                 tx = selectConnector->beginTransaction_authorized(idTag);
             }
-            selectConnector->updateTxNotification(TxNotification_RemoteStart);
+            selectConnector->updateTxNotification(TxNotification::RemoteStart);
             if (tx) {
                 if (chargingProfileId >= 0) {
                     tx->setTxProfileId(chargingProfileId);

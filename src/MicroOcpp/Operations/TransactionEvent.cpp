@@ -97,7 +97,11 @@ std::unique_ptr<JsonDoc> TransactionEvent::createReq() {
         transactionInfo["remoteStartId"] = txEvent->transaction->remoteStartId;
     }
 
-    if (txEvent->idToken) {
+    // Ne pas envoyer idToken si NoAuthorization : CitrineOS tente de
+    // valider le token, repond idTokenInfo:Unknown, et ferme le WebSocket.
+    // Le champ est optionnel (OCPP 2.0.1 ss10.6) quand pas de badge RFID.
+    if (txEvent->idToken &&
+            strcmp(txEvent->idToken->getTypeCstr(), "NoAuthorization") != 0) {
         JsonObject idToken = payload.createNestedObject("idToken");
         idToken["idToken"] = txEvent->idToken->get();
         idToken["type"] = txEvent->idToken->getTypeCstr();
@@ -131,10 +135,20 @@ std::unique_ptr<JsonDoc> TransactionEvent::createReq() {
 void TransactionEvent::processConf(JsonObject payload) {
 
     if (payload.containsKey("idTokenInfo")) {
-        if (strcmp(payload["idTokenInfo"]["status"], "Accepted")) {
+        // Fix: ignorer idTokenInfo si le token est NoAuthorization.
+        // OCPP 2.0.1 §10.1 : NoAuthorization signifie "pas de badge RFID",
+        // le CSMS ne devrait pas évaluer le token — mais certains serveurs
+        // (CitrineOS) renvoient quand même un idTokenInfo non-Accepted,
+        // ce qui provoque une dé-autorisation incorrecte.
+        // type est privé : on compare via getTypeCstr()
+        bool isNoAuth = txEvent->idToken &&
+                        !strcmp(txEvent->idToken->getTypeCstr(), "NoAuthorization");
+        if (!isNoAuth && strcmp(payload["idTokenInfo"]["status"], "Accepted")) {
             MO_DBG_INFO("transaction deAuthorized");
             txEvent->transaction->active = false;
             txEvent->transaction->isDeauthorized = true;
+        } else if (isNoAuth && payload.containsKey("idTokenInfo")) {
+            MO_DBG_DEBUG("NoAuthorization token: ignoring idTokenInfo response");
         }
     }
 }

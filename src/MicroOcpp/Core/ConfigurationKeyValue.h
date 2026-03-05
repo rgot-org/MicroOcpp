@@ -36,15 +36,7 @@ protected:
     revision_t value_revision = 0; //write access counter; used to check if this config has been changed
 private:
     bool rebootRequired = false;
-
-    enum class Mutability : uint8_t {
-        ReadWrite,
-        ReadOnly,
-        WriteOnly,
-        None
-    };
-    Mutability mutability = Mutability::ReadWrite;
-
+    bool readOnly = false;
 public:
     virtual ~Configuration();
 
@@ -68,9 +60,6 @@ public:
 
     void setReadOnly();
     bool isReadOnly();
-    bool isReadable();
-
-    void setWriteOnly();
 };
 
 /*

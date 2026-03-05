@@ -30,11 +30,9 @@ std::unique_ptr<JsonDoc> GetLocalListVersion::createConf(){
     auto doc = makeJsonDoc(getMemoryTag(), JSON_OBJECT_SIZE(1));
     JsonObject payload = doc->to<JsonObject>();
 
-    auto authService = model.getAuthorizationService();
-    if (authService && authService->localAuthListEnabled()) {
+    if (auto authService = model.getAuthorizationService()) {
         payload["listVersion"] = authService->getLocalListVersion();
     } else {
-        //TC_042_1_CS Get Local List Version (not supported)
         payload["listVersion"] = -1;
     }
     return doc;
